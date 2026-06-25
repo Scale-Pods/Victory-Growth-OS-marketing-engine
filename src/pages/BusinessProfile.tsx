@@ -1,12 +1,50 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
-import { ChevronLeft, Pencil, Check, ExternalLink } from 'lucide-react'
+import { ChevronLeft, Pencil, Check, ExternalLink, Brain, Loader2, RefreshCw, AlertCircle } from 'lucide-react'
 import { LiquidCard } from '../components/ui'
 import AssetUploader from '../components/AssetUploader'
 import { platformMeta } from '../data/dummy'
 import { getProfile, updateProfile, type BusinessProfile } from '../lib/clients'
+import { supabase } from '../lib/supabase'
+
+const N8N_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/ai-analysis'
 
 const URL_RE = /https?:\/\/[^\s]+/g
+
+type BiReport = {
+  id: string
+  profile_id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  website_analysis: string | null
+  instagram_analysis: string | null
+  facebook_analysis: string | null
+  linkedin_analysis: string | null
+  competitor_analysis: string | null
+  seo_analysis: string | null
+  audience_analysis: string | null
+  full_report: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+function renderMarkdown(text: string) {
+  return text.split('\n').map((line, i) => {
+    if (line.startsWith('# '))
+      return <h2 key={i} style={{ fontSize: 22, fontWeight: 700, margin: '22px 0 8px', color: 'var(--label-primary)', letterSpacing: '-.02em' }}>{line.slice(2)}</h2>
+    if (line.startsWith('## '))
+      return <h3 key={i} style={{ fontSize: 17, fontWeight: 600, margin: '18px 0 6px', color: 'var(--label-primary)' }}>{line.slice(3)}</h3>
+    if (line.startsWith('### '))
+      return <h4 key={i} style={{ fontSize: 14.5, fontWeight: 600, margin: '14px 0 4px', color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{line.slice(4)}</h4>
+    if (line.startsWith('- ') || line.startsWith('* '))
+      return <li key={i} style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--label-primary)', marginLeft: 18, marginBottom: 3 }}>{line.slice(2)}</li>
+    if (line.startsWith('**') && line.endsWith('**'))
+      return <p key={i} style={{ fontSize: 14, lineHeight: 1.65, fontWeight: 600, color: 'var(--label-primary)', margin: '4px 0' }}>{line.slice(2, -2)}</p>
+    if (line.trim() === '')
+      return <br key={i} />
+    return <p key={i} style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--label-primary)', margin: '3px 0' }}>{line}</p>
+  })
+}
 
 function linkStyle(): React.CSSProperties {
   return { color: 'var(--blue)', textDecoration: 'none', wordBreak: 'break-all', display: 'inline-flex', alignItems: 'center', gap: 3 }
@@ -84,6 +122,26 @@ export default function BusinessProfile() {
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [report, setReport] = useState<BiReport | null>(null)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function fetchReport() {
+    if (!id) return
+    const { data } = await supabase
+      .from('business_intelligence_reports' as any)
+      .select('*')
+      .eq('profile_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (data) {
+      setReport(data as BiReport)
+      if ((data as BiReport).status === 'processing' || (data as BiReport).status === 'pending') {
+        setAnalysisLoading(true)
+      }
+    }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -91,7 +149,30 @@ export default function BusinessProfile() {
       .then((p) => { setProfile(p); setForm(p); if (p.status === 'onboarding') setEdit(true) })
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false))
+    fetchReport()
   }, [id])
+
+  useEffect(() => {
+    if (!analysisLoading || !id) return
+    pollRef.current = setInterval(async () => {
+      const { data } = await supabase
+        .from('business_intelligence_reports' as any)
+        .select('*')
+        .eq('profile_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data) {
+        const r = data as BiReport
+        setReport(r)
+        if (r.status === 'completed' || r.status === 'failed') {
+          setAnalysisLoading(false)
+          if (pollRef.current) clearInterval(pollRef.current)
+        }
+      }
+    }, 3000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [analysisLoading, id])
 
   function set<K extends FieldKey>(key: K, value: BusinessProfile[K]) {
     setForm((f) => (f ? { ...f, [key]: value } : f))
@@ -106,7 +187,26 @@ export default function BusinessProfile() {
       const updated = await updateProfile(id, patch)
       setProfile(updated); setForm(updated); setEdit(false); setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+      // Trigger AI analysis in background
+      setAnalysisLoading(true)
+      setReport(null)
+      fetch(N8N_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId: id }),
+      }).catch(() => {/* silent — webhook is fire-and-forget */})
     } catch (e: any) { setErr(e.message) } finally { setSaving(false) }
+  }
+
+  async function retryAnalysis() {
+    if (!id) return
+    setAnalysisLoading(true)
+    setReport(null)
+    fetch(N8N_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: id }),
+    }).catch(() => {})
   }
 
   if (loading) return <LiquidCard lg><div style={{ color: 'var(--label-tertiary)' }}>Loading profile…</div></LiquidCard>
@@ -277,6 +377,142 @@ export default function BusinessProfile() {
           />
         </LiquidCard>
       </div>
+
+      {/* ── AI Business Intelligence Report ── */}
+      <LiquidCard lg style={{ marginTop: 20 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Brain size={18} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--label-primary)' }}>AI Business Intelligence Report</div>
+              <div style={{ fontSize: 12, color: 'var(--label-tertiary)' }}>Auto-generated when you save the profile</div>
+            </div>
+          </div>
+          {report?.status === 'completed' && (
+            <button className="btn-secondary" style={{ color: 'var(--label-secondary)', fontSize: 12 }} onClick={retryAnalysis}>
+              <RefreshCw size={13} style={{ marginRight: 5 }} />Re-run
+            </button>
+          )}
+          {report?.status === 'failed' && (
+            <button className="btn-secondary" style={{ color: 'var(--red)', fontSize: 12 }} onClick={retryAnalysis}>
+              <RefreshCw size={13} style={{ marginRight: 5 }} />Retry
+            </button>
+          )}
+        </div>
+
+        {/* Loading state */}
+        {analysisLoading && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '48px 24px', gap: 16, textAlign: 'center',
+          }}>
+            <div style={{ position: 'relative', width: 64, height: 64 }}>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(59,130,246,.25), rgba(139,92,246,.25))',
+                animation: 'pulse 2s ease-in-out infinite',
+              }} />
+              <div style={{
+                position: 'absolute', inset: 8, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Loader2 size={22} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--label-primary)', marginBottom: 6 }}>
+                Generating Business Intelligence Report…
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--label-tertiary)', maxWidth: 380 }}>
+                Scraping website & social media, researching competitors, analyzing SEO opportunities, and synthesizing insights with GPT-4o. This takes ~60 seconds.
+              </div>
+            </div>
+            {/* Animated progress steps */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+              {['Website', 'Instagram', 'Facebook', 'LinkedIn', 'Competitors', 'SEO', 'Synthesis'].map((step, i) => (
+                <div key={step} style={{
+                  padding: '4px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 500,
+                  background: 'var(--fill-quaternary)', color: 'var(--label-secondary)',
+                  border: '1px solid var(--separator)',
+                  animation: `fadeInUp 0.4s ease ${i * 0.15}s both`,
+                }}>
+                  {step}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {!analysisLoading && report?.status === 'failed' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px',
+            borderRadius: 12, background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)',
+          }}>
+            <AlertCircle size={20} color="var(--red)" />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--red)' }}>Analysis failed</div>
+              <div style={{ fontSize: 13, color: 'var(--label-tertiary)', marginTop: 2 }}>{report.error_message || 'An error occurred. Click Retry to try again.'}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state (no report yet) */}
+        {!analysisLoading && !report && (
+          <div style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--label-tertiary)' }}>
+            <Brain size={36} style={{ opacity: .25, marginBottom: 12 }} />
+            <div style={{ fontSize: 14 }}>Save the profile to auto-generate your Business Intelligence Report.</div>
+          </div>
+        )}
+
+        {/* Completed report */}
+        {!analysisLoading && report?.status === 'completed' && report.full_report && (
+          <>
+            <div style={{
+              display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16,
+            }}>
+              {[
+                { label: 'Website', field: report.website_analysis },
+                { label: 'Instagram', field: report.instagram_analysis },
+                { label: 'Facebook', field: report.facebook_analysis },
+                { label: 'LinkedIn', field: report.linkedin_analysis },
+                { label: 'Competitors', field: report.competitor_analysis },
+                { label: 'SEO', field: report.seo_analysis },
+                { label: 'Audience', field: report.audience_analysis },
+              ].map(({ label, field }) => (
+                <span key={label} className="badge" style={{
+                  background: field ? 'rgba(59,130,246,.12)' : 'var(--fill-quaternary)',
+                  color: field ? 'var(--blue)' : 'var(--label-tertiary)',
+                  border: `1px solid ${field ? 'rgba(59,130,246,.25)' : 'var(--separator)'}`,
+                }}>{label} {field ? '✓' : '—'}</span>
+              ))}
+              <span style={{ fontSize: 11.5, color: 'var(--label-tertiary)', alignSelf: 'center', marginLeft: 4 }}>
+                Generated {new Date(report.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <div style={{
+              borderRadius: 12, background: 'var(--fill-quaternary)', padding: '20px 24px',
+              border: '1px solid var(--separator)', maxHeight: 600, overflowY: 'auto',
+            }}>
+              {renderMarkdown(report.full_report)}
+            </div>
+          </>
+        )}
+      </LiquidCard>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { transform: scale(1); opacity:.6; } 50% { transform: scale(1.12); opacity:1; } }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+      `}</style>
     </>
   )
 }
