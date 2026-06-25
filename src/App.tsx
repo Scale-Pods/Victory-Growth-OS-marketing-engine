@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import AppShell from './components/AppShell'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import BusinessProfile from './pages/BusinessProfile'
@@ -22,6 +23,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<Protected />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/clients" element={<Clients />} />
