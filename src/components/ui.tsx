@@ -24,10 +24,12 @@ export function MetricTile({ label, value, trend, dir, accent }: { label: string
 }
 
 const statusClass: Record<string, string> = {
-  published: 'badge-green', scheduled: 'badge-orange', draft: 'badge-grey', failed: 'badge-red',
+  published: 'badge-green', scheduled: 'badge-orange', processing: 'badge-orange',
+  queued: 'badge-blue', draft: 'badge-grey', draft_uploaded: 'badge-grey', failed: 'badge-red',
 }
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge ${statusClass[status] || 'badge-grey'}`}>{status[0].toUpperCase() + status.slice(1)}</span>
+  const label = status.replace(/_/g, ' ')
+  return <span className={`badge ${statusClass[status] || 'badge-grey'}`}>{label[0].toUpperCase() + label.slice(1)}</span>
 }
 
 export function PlatformIcon({ platform, size = 34 }: { platform: keyof typeof platformMeta; size?: number }) {
