@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ChevronLeft, Brain, Loader2, RefreshCw, AlertCircle,
@@ -42,20 +42,87 @@ const TABS = [
 
 type TabKey = typeof TABS[number]['key']
 
-function renderMarkdown(text: string) {
-  return text.split('\n').map((line, i) => {
-    if (line.startsWith('# '))
-      return <h2 key={i} style={{ fontSize: 22, fontWeight: 700, margin: '22px 0 8px', color: 'var(--label-primary)', letterSpacing: '-.02em' }}>{line.slice(2)}</h2>
-    if (line.startsWith('## '))
-      return <h3 key={i} style={{ fontSize: 17, fontWeight: 600, margin: '18px 0 6px', color: 'var(--label-primary)' }}>{line.slice(3)}</h3>
-    if (line.startsWith('### '))
-      return <h4 key={i} style={{ fontSize: 14, fontWeight: 600, margin: '14px 0 4px', color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{line.slice(4)}</h4>
-    if (line.startsWith('- ') || line.startsWith('* '))
-      return <li key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--label-primary)', marginLeft: 20, marginBottom: 4 }}>{line.slice(2)}</li>
-    if (line.trim() === '')
-      return <br key={i} />
-    return <p key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--label-primary)', margin: '4px 0' }}>{line}</p>
+// Render inline **bold** segments within a line of text
+function renderInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`${keyPrefix}-b${idx}`} style={{ fontWeight: 700, color: 'var(--label-primary)' }}>{part.slice(2, -2)}</strong>
+    }
+    return <span key={`${keyPrefix}-s${idx}`}>{part}</span>
   })
+}
+
+// Detect a markdown table starting at index i; returns [element, linesConsumed] or null
+function tryRenderTable(lines: string[], i: number) {
+  const isRow = (l: string) => l.trim().startsWith('|') && l.trim().endsWith('|')
+  const isDivider = (l: string) => /^\s*\|?[\s:|-]+\|?\s*$/.test(l) && l.includes('-')
+  if (!isRow(lines[i]) || i + 1 >= lines.length || !isDivider(lines[i + 1])) return null
+
+  const splitCells = (l: string) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
+  const header = splitCells(lines[i])
+  let j = i + 2
+  const rows: string[][] = []
+  while (j < lines.length && isRow(lines[j]) && !isDivider(lines[j])) {
+    rows.push(splitCells(lines[j]))
+    j++
+  }
+
+  const el = (
+    <div key={`tbl-${i}`} style={{ overflowX: 'auto', margin: '14px 0' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+        <thead>
+          <tr>
+            {header.map((h, hi) => (
+              <th key={hi} style={{ textAlign: 'left', padding: '9px 12px', background: 'var(--fill-secondary)', color: 'var(--label-primary)', fontWeight: 600, borderBottom: '1px solid var(--separator)', whiteSpace: 'nowrap' }}>
+                {renderInline(h, `th${i}-${hi}`)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, ri) => (
+            <tr key={ri} style={{ background: ri % 2 ? 'var(--fill-quaternary)' : 'transparent' }}>
+              {r.map((c, ci) => (
+                <td key={ci} style={{ padding: '9px 12px', color: 'var(--label-primary)', borderBottom: '1px solid var(--separator)', verticalAlign: 'top' }}>
+                  {renderInline(c, `td${i}-${ri}-${ci}`)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+  return [el, j - i] as const
+}
+
+function renderMarkdown(text: string) {
+  const lines = text.split('\n')
+  const out: ReactNode[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    const table = tryRenderTable(lines, i)
+    if (table) { out.push(table[0]); i += table[1] - 1; continue }
+
+    if (line.startsWith('# ')) {
+      out.push(<h2 key={i} style={{ fontSize: 22, fontWeight: 700, margin: '22px 0 8px', color: 'var(--label-primary)', letterSpacing: '-.02em' }}>{renderInline(line.slice(2), `h2-${i}`)}</h2>)
+    } else if (line.startsWith('## ')) {
+      out.push(<h3 key={i} style={{ fontSize: 17, fontWeight: 600, margin: '18px 0 6px', color: 'var(--label-primary)' }}>{renderInline(line.slice(3), `h3-${i}`)}</h3>)
+    } else if (line.startsWith('### ')) {
+      out.push(<h4 key={i} style={{ fontSize: 14, fontWeight: 600, margin: '14px 0 4px', color: 'var(--label-secondary)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{renderInline(line.slice(4), `h4-${i}`)}</h4>)
+    } else if (/^\d+\.\s/.test(line)) {
+      out.push(<li key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--label-primary)', marginLeft: 20, marginBottom: 4, listStyleType: 'decimal' }}>{renderInline(line.replace(/^\d+\.\s/, ''), `ol-${i}`)}</li>)
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      out.push(<li key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--label-primary)', marginLeft: 20, marginBottom: 4 }}>{renderInline(line.slice(2), `li-${i}`)}</li>)
+    } else if (line.trim() === '') {
+      out.push(<br key={i} />)
+    } else {
+      out.push(<p key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--label-primary)', margin: '4px 0' }}>{renderInline(line, `p-${i}`)}</p>)
+    }
+  }
+  return out
 }
 
 export default function IntelligenceReport() {
