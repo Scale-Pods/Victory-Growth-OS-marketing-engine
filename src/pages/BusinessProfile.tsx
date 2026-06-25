@@ -1,10 +1,57 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
-import { ChevronLeft, Pencil, Check } from 'lucide-react'
+import { ChevronLeft, Pencil, Check, ExternalLink } from 'lucide-react'
 import { LiquidCard } from '../components/ui'
 import AssetUploader from '../components/AssetUploader'
 import { platformMeta } from '../data/dummy'
 import { getProfile, updateProfile, type BusinessProfile } from '../lib/clients'
+
+const URL_RE = /https?:\/\/[^\s]+/g
+
+function linkStyle(): React.CSSProperties {
+  return { color: 'var(--blue)', textDecoration: 'none', wordBreak: 'break-all', display: 'inline-flex', alignItems: 'center', gap: 3 }
+}
+
+function renderValue(fieldKey: FieldKey, raw: string) {
+  if (!raw) return <span style={{ color: 'var(--label-tertiary)' }}>—</span>
+
+  if (fieldKey === 'website_url') {
+    return (
+      <a href={raw.startsWith('http') ? raw : `https://${raw}`} target="_blank" rel="noopener noreferrer" style={linkStyle()}>
+        {raw}<ExternalLink size={12} />
+      </a>
+    )
+  }
+
+  if (fieldKey === 'email') {
+    return <a href={`mailto:${raw}`} style={linkStyle()}>{raw}</a>
+  }
+
+  if (fieldKey === 'phone') {
+    return <a href={`tel:${raw.replace(/\s/g, '')}`} style={{ ...linkStyle(), color: 'var(--label-primary)' }}>{raw}</a>
+  }
+
+  // For any field that may contain URLs (social_media_urls, etc.) — linkify inline
+  if (URL_RE.test(raw)) {
+    URL_RE.lastIndex = 0
+    const parts: React.ReactNode[] = []
+    let last = 0, m: RegExpExecArray | null
+    while ((m = URL_RE.exec(raw)) !== null) {
+      if (m.index > last) parts.push(raw.slice(last, m.index))
+      const url = m[0].replace(/[.,)]+$/, '') // trim trailing punctuation
+      parts.push(
+        <a key={m.index} href={url} target="_blank" rel="noopener noreferrer" style={linkStyle()}>
+          {url}<ExternalLink size={11} />
+        </a>
+      )
+      last = m.index + url.length
+    }
+    if (last < raw.length) parts.push(raw.slice(last))
+    return <div style={{ fontSize: 14.5, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{parts}</div>
+  }
+
+  return <div style={{ fontSize: 14.5, lineHeight: 1.47, whiteSpace: 'pre-wrap' }}>{raw}</div>
+}
 
 type FieldKey = keyof BusinessProfile
 const sections: { key: FieldKey; label: string; area?: boolean; full?: boolean }[] = [
@@ -117,7 +164,7 @@ export default function BusinessProfile() {
               ? (f.area
                   ? <textarea className="input" rows={3} value={(form[f.key] as string) ?? ''} onChange={(e) => set(f.key, e.target.value as any)} />
                   : <input className="input" value={(form[f.key] as string) ?? ''} onChange={(e) => set(f.key, e.target.value as any)} />)
-              : <div style={{ fontSize: 14.5, lineHeight: 1.47, color: 'var(--label-primary)', whiteSpace: 'pre-wrap' }}>{(form[f.key] as string) || <span style={{ color: 'var(--label-tertiary)' }}>—</span>}</div>}
+              : <div style={{ color: 'var(--label-primary)' }}>{renderValue(f.key, (form[f.key] as string) ?? '')}</div>}
           </LiquidCard>
         ))}
 
