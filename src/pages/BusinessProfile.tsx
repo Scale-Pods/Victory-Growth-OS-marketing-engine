@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { ChevronLeft, Pencil, Check } from 'lucide-react'
 import { LiquidCard } from '../components/ui'
+import AssetUploader from '../components/AssetUploader'
 import { platformMeta } from '../data/dummy'
 import { getProfile, updateProfile, type BusinessProfile } from '../lib/clients'
 
@@ -19,7 +20,6 @@ const sections: { key: FieldKey; label: string; area?: boolean; full?: boolean }
   { key: 'competitors', label: 'Competitors', area: true },
   { key: 'website_url', label: 'Website URL' },
   { key: 'social_media_urls', label: 'Social media URLs', area: true, full: true },
-  { key: 'assets', label: 'Assets upload', area: true, full: true },
   { key: 'additional_notes', label: 'Additional notes', area: true, full: true },
   { key: 'phone', label: 'Phone' },
   { key: 'email', label: 'Email' },
@@ -120,6 +120,17 @@ export default function BusinessProfile() {
               : <div style={{ fontSize: 14.5, lineHeight: 1.47, color: 'var(--label-primary)', whiteSpace: 'pre-wrap' }}>{(form[f.key] as string) || <span style={{ color: 'var(--label-tertiary)' }}>—</span>}</div>}
           </LiquidCard>
         ))}
+
+        {/* Assets upload — full-width drag-drop, rendered separately from generic sections */}
+        <LiquidCard style={{ gridColumn: '1 / -1' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.02em', textTransform: 'uppercase', color: 'var(--label-tertiary)', marginBottom: 8 }}>Assets upload</div>
+          <AssetUploader
+            profileId={id!}
+            value={form.assets ?? ''}
+            onChange={(json) => set('assets', json as any)}
+            disabled={!edit}
+          />
+        </LiquidCard>
       </div>
     </>
   )
