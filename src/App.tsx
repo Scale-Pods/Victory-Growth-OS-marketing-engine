@@ -11,6 +11,8 @@ import CalendarPage from './pages/Calendar'
 import Publishing from './pages/Publishing'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import Intelligence from './pages/Intelligence'
+import IntelligenceReport from './pages/IntelligenceReport'
 
 function Protected() {
   const { session, loading } = useAuth()
@@ -32,6 +34,8 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/publishing" element={<Publishing />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/intelligence" element={<Intelligence />} />
+          <Route path="/intelligence/:id" element={<IntelligenceReport />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

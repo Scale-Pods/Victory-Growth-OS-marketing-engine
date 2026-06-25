@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutGrid, Users, TrendingUp, Calendar, Send, BarChart3, Settings as Cog,
-  Search, Sun, Moon, LogOut,
+  Search, Sun, Moon, LogOut, Brain,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 
@@ -18,6 +18,7 @@ const nav = [
   ]},
   { section: 'Insight', items: [
     { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/intelligence', label: 'Business Intelligence', icon: Brain },
     { to: '/settings', label: 'Settings', icon: Cog },
   ]},
 ]
