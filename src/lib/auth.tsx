@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSelectedRole(role)
       localStorage.setItem(ROLE_KEY, role)
     }
-    return { error: error?.message }
+    const msg = error?.message
+    return { error: msg && msg !== '{}' ? msg : error ? 'Invalid email or password' : undefined }
   }
 
   async function signOut() {
