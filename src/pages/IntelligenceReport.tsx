@@ -22,20 +22,22 @@ type BiReport = {
   seo_analysis: string | null
   audience_analysis: string | null
   full_report: string | null
+  claude_report: string | null
   error_message: string | null
   created_at: string
   updated_at: string
 }
 
 const TABS = [
-  { key: 'full_report', label: 'Full Report', icon: FileText, color: '#8b5cf6' },
-  { key: 'website_analysis', label: 'Website', icon: Globe, color: '#3b82f6' },
-  { key: 'instagram_analysis', label: 'Instagram', icon: Instagram, color: '#e1306c' },
-  { key: 'facebook_analysis', label: 'Facebook', icon: Facebook, color: '#1877f2' },
-  { key: 'linkedin_analysis', label: 'LinkedIn', icon: Linkedin, color: '#0a66c2' },
-  { key: 'competitor_analysis', label: 'Competitors', icon: TrendingUp, color: '#f59e0b' },
-  { key: 'seo_analysis', label: 'SEO', icon: Search, color: '#10b981' },
-  { key: 'audience_analysis', label: 'Audience', icon: Users, color: '#ec4899' },
+  { key: 'full_report', label: 'Full Report', icon: FileText, color: '#8b5cf6', claude: false },
+  { key: 'claude_report', label: 'Claude Strategy', icon: Brain, color: '#f97316', claude: true },
+  { key: 'website_analysis', label: 'Website', icon: Globe, color: '#3b82f6', claude: false },
+  { key: 'instagram_analysis', label: 'Instagram', icon: Instagram, color: '#e1306c', claude: false },
+  { key: 'facebook_analysis', label: 'Facebook', icon: Facebook, color: '#1877f2', claude: false },
+  { key: 'linkedin_analysis', label: 'LinkedIn', icon: Linkedin, color: '#0a66c2', claude: false },
+  { key: 'competitor_analysis', label: 'Competitors', icon: TrendingUp, color: '#f59e0b', claude: false },
+  { key: 'seo_analysis', label: 'SEO', icon: Search, color: '#10b981', claude: false },
+  { key: 'audience_analysis', label: 'Audience', icon: Users, color: '#ec4899', claude: false },
 ] as const
 
 type TabKey = typeof TABS[number]['key']
@@ -266,17 +268,25 @@ export default function IntelligenceReport() {
                   disabled={!hasData}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                    padding: '8px 14px', borderRadius: 10, border: 'none', cursor: hasData ? 'pointer' : 'not-allowed',
+                    padding: '8px 14px', borderRadius: 10, cursor: hasData ? 'pointer' : 'not-allowed',
                     fontSize: 13, fontWeight: isActive ? 600 : 500,
-                    background: isActive ? tab.color : 'var(--fill-secondary)',
-                    color: isActive ? '#fff' : hasData ? 'var(--label-primary)' : 'var(--label-quaternary)',
+                    background: isActive ? tab.color : tab.claude ? 'rgba(249,115,22,.08)' : 'var(--fill-secondary)',
+                    color: isActive ? '#fff' : hasData ? (tab.claude ? '#f97316' : 'var(--label-primary)') : 'var(--label-quaternary)',
                     opacity: !hasData ? 0.4 : 1,
                     transition: 'all .15s ease',
+                    border: tab.claude ? `1.5px solid ${isActive ? 'transparent' : 'rgba(249,115,22,.3)'}` : 'none',
                     boxShadow: isActive ? `0 4px 14px ${tab.color}44` : 'none',
                   }}
                 >
                   <Icon size={14} strokeWidth={2} />
                   {tab.label}
+                  {tab.claude && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+                      background: isActive ? 'rgba(255,255,255,.25)' : 'rgba(249,115,22,.15)',
+                      color: isActive ? '#fff' : '#f97316', letterSpacing: '.02em',
+                    }}>4.6</span>
+                  )}
                 </button>
               )
             })}
@@ -302,8 +312,16 @@ export default function IntelligenceReport() {
                   }}>
                     <tab.icon size={16} color={tab.color} />
                   </div>
-                  <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--label-primary)' }}>{tab.label} Analysis</div>
-                  {completedTabs.length > 0 && (
+                  <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--label-primary)' }}>
+                    {tab.key === 'claude_report' ? 'Claude Strategy Report' : `${tab.label} Analysis`}
+                  </div>
+                  {tab.claude && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 20, background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)' }}>
+                      <Brain size={11} color="#f97316" />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#f97316', letterSpacing: '.02em' }}>Claude Sonnet 4.6</span>
+                    </div>
+                  )}
+                  {!tab.claude && completedTabs.length > 0 && (
                     <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--label-tertiary)' }}>
                       {completedTabs.findIndex((t) => t.key === tab.key) + 1} of {completedTabs.length} sections
                     </div>
