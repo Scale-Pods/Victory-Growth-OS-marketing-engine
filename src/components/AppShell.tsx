@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutGrid, Users, TrendingUp, Calendar, Send, BarChart3, Settings as Cog,
-  Search, Sun, Moon,
+  Search, Sun, Moon, LogOut,
 } from 'lucide-react'
+import { useAuth } from '../lib/auth'
+
+const roleBadge: Record<string, string> = { admin: 'badge-purple', client: 'badge-blue', designer: 'badge-orange' }
 
 const nav = [
   { section: 'Marketing engine', items: [
@@ -22,6 +25,8 @@ const nav = [
 export default function AppShell() {
   const [theme, setTheme] = useState<string>(() => document.documentElement.getAttribute('data-theme') || 'dark')
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme) }, [theme])
+  const { user, role, signOut } = useAuth()
+  const initials = (user?.email || 'U').slice(0, 2).toUpperCase()
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -59,7 +64,17 @@ export default function AppShell() {
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,var(--indigo),var(--blue))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 14 }}>SP</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ textAlign: 'right', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{user?.email}</div>
+              {role && <span className={`badge ${roleBadge[role] || 'badge-grey'}`} style={{ fontSize: 10, padding: '1px 7px' }}>{role}</span>}
+            </div>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,var(--indigo),var(--blue))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 14 }}>{initials}</div>
+          </div>
+          <button className="btn-secondary" style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--label-primary)' }}
+            onClick={() => signOut()} aria-label="Sign out" title="Sign out">
+            <LogOut size={17} />
+          </button>
         </header>
         <main style={{ padding: '22px 28px 48px', flex: 1 }}>
           <Outlet />
