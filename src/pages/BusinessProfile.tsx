@@ -114,20 +114,118 @@ export default function BusinessProfile() {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <Link to="/clients" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--label-primary)' }}><ChevronLeft size={16} /> Clients</Link>
-        <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700 }}>{form.business_name}</h1>
-          <div style={{ fontSize: 13, color: 'var(--label-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Back nav */}
+      <div style={{ marginBottom: 16 }}>
+        <Link to="/clients" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--label-primary)' }}>
+          <ChevronLeft size={16} /> Clients
+        </Link>
+      </div>
+
+      {/* LinkedIn-style profile banner */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 20, boxShadow: '0 8px 40px rgba(0,0,0,.35)' }}>
+
+        {/* Cover strip */}
+        <div style={{
+          height: 110, position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(135deg, #0b1f45 0%, #1a3a72 40%, #0e2d5c 70%, #071630 100%)',
+        }}>
+          {/* Subtle grid pattern overlay */}
+          <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: .07 }} xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#fff" strokeWidth=".6"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+          {/* Radial glow */}
+          <div style={{ position: 'absolute', top: -40, right: '15%', width: 240, height: 240,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,.28) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -30, left: '30%', width: 160, height: 160,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,179,255,.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        </div>
+
+        {/* Profile info row */}
+        <div style={{
+          background: 'var(--glass-fill)', backdropFilter: 'blur(40px) saturate(180%)',
+          padding: '0 28px 22px', borderTop: '1px solid var(--separator)',
+        }}>
+          {/* Logo + actions row */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
+            {/* Logo pulled up over the cover */}
+            <div style={{
+              marginTop: -38, width: 76, height: 76, borderRadius: 18,
+              background: '#fff', border: '3px solid var(--glass-fill)',
+              boxShadow: '0 4px 20px rgba(0,0,0,.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden',
+            }}>
+              <img
+                src="https://victoryenergy.us/wp-content/uploads/2026/05/VE-Logo-Color.svg"
+                alt="Victory Energy"
+                style={{ width: 62, height: 62, objectFit: 'contain' }}
+                onError={(e) => {
+                  const el = e.currentTarget as HTMLImageElement
+                  el.style.display = 'none'
+                  const fb = document.createElement('span')
+                  fb.textContent = (form.business_name || 'VE')[0]
+                  fb.style.cssText = 'font-size:28px;font-weight:700;color:#0b1f45'
+                  el.parentElement?.appendChild(fb)
+                }}
+              />
+            </div>
+
+            {/* Save / Edit buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 10 }}>
+              {saved && <span className="badge badge-green">Saved</span>}
+              {edit
+                ? <button className="btn-primary" onClick={save} disabled={saving}>
+                    <Check size={15} style={{ verticalAlign: -2, marginRight: 6 }} />
+                    {saving ? 'Saving…' : 'Save Business Profile'}
+                  </button>
+                : <button className="btn-secondary" style={{ color: 'var(--label-primary)' }} onClick={() => setEdit(true)}>
+                    <Pencil size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Edit
+                  </button>}
+            </div>
+          </div>
+
+          {/* Name + tagline */}
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-.01em' }}>
+            {form.business_name}
+          </h1>
+          {form.tagline && (
+            <div style={{ fontSize: 14.5, color: 'var(--label-secondary)', marginBottom: 10, fontStyle: 'italic' }}>
+              "{form.tagline}"
+            </div>
+          )}
+
+          {/* Badges row */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
             <span className={`badge ${form.status === 'active' ? 'badge-green' : 'badge-orange'}`}>{form.status}</span>
-            Business Discovery Form · editable anytime
+            {form.industry && <span className="badge badge-blue">{form.industry}</span>}
+            <span style={{ fontSize: 12, color: 'var(--label-tertiary)' }}>Business Discovery Form · editable anytime</span>
+          </div>
+
+          {/* Stats strip */}
+          <div style={{
+            display: 'flex', gap: 0, borderRadius: 12, overflow: 'hidden',
+            border: '1px solid var(--separator)', background: 'var(--fill-quaternary)',
+          }}>
+            {[
+              { label: 'Service states', value: form.service_areas.length || '—' },
+              { label: 'Platforms', value: form.target_platforms.length || '—' },
+              { label: 'Website', value: form.website_url ? 'Linked' : '—' },
+              { label: 'Status', value: form.status.charAt(0).toUpperCase() + form.status.slice(1) },
+            ].map((s, i) => (
+              <div key={s.label} style={{
+                flex: 1, padding: '12px 16px', textAlign: 'center',
+                borderLeft: i > 0 ? '1px solid var(--separator)' : 'none',
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.02em', color: 'var(--label-primary)' }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: 'var(--label-tertiary)', textTransform: 'uppercase', letterSpacing: '.04em', marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
           </div>
         </div>
-        <div style={{ flex: 1 }} />
-        {saved && <span className="badge badge-green">Saved</span>}
-        {edit
-          ? <button className="btn-primary" onClick={save} disabled={saving}><Check size={15} style={{ verticalAlign: -2, marginRight: 6 }} />{saving ? 'Saving…' : 'Save Business Profile'}</button>
-          : <button className="btn-secondary" style={{ color: 'var(--label-primary)' }} onClick={() => setEdit(true)}><Pencil size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Edit</button>}
       </div>
 
       {err && <LiquidCard style={{ marginBottom: 16, color: 'var(--red)' }}>{err}</LiquidCard>}
