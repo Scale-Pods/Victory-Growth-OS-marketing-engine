@@ -222,6 +222,15 @@ function ContentCard({ item }: { item: ContentItem }) {
         )}
       </div>
 
+      {item.media_url && (
+        <img
+          src={item.media_url}
+          alt={item.title ?? 'Generated visual'}
+          loading="lazy"
+          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 10, marginBottom: 12, background: 'var(--fill-tertiary)' }}
+        />
+      )}
+
       {item.title && <div style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>{item.title}</div>}
 
       {item.body && (
