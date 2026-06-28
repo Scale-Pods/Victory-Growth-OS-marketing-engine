@@ -15,6 +15,7 @@ import Intelligence from './pages/Intelligence'
 import IntelligenceReport from './pages/IntelligenceReport'
 import Strategy from './pages/Strategy'
 import ContentFactory from './pages/ContentFactory'
+import CreativeReview from './pages/CreativeReview'
 
 function Protected() {
   const { session, loading } = useAuth()
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/trends" element={<Trends />} />
           <Route path="/strategy" element={<Strategy />} />
           <Route path="/content" element={<ContentFactory />} />
+          <Route path="/review" element={<CreativeReview />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/publishing" element={<Publishing />} />
           <Route path="/analytics" element={<Analytics />} />

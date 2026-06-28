@@ -1,6 +1,9 @@
 import { supabase } from './supabase'
 
 export const N8N_CONTENT_TEXT_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/content-factory-text'
+export const N8N_CONTENT_IMAGE_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/content-factory-image'
+export const N8N_CONTENT_BRAND_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/content-factory-brand'
+export const N8N_CONTENT_REGEN_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/content-regenerate'
 
 export type ContentType =
   | 'static_image' | 'carousel' | 'ugc_video' | 'motion_graphics' | 'product_video'
@@ -102,4 +105,33 @@ export async function triggerContentTextRun(profileId: string): Promise<void> {
 /** Update a single content item (e.g. approve / request revision / edit body). */
 export async function updateContentItem(id: string, patch: Partial<ContentItem>): Promise<void> {
   await supabase.from('content_items' as any).update(patch).eq('id', id)
+}
+
+/** Approve a content item (Creative Review). */
+export async function approveContentItem(id: string): Promise<void> {
+  await supabase.from('content_items' as any)
+    .update({ status: 'approved', approved_at: new Date().toISOString() })
+    .eq('id', id)
+}
+
+/** Request a revision: flag the item and fire the regenerate workflow with notes. */
+export async function requestRevision(id: string, notes: string, currentCount: number): Promise<void> {
+  await supabase.from('content_items' as any)
+    .update({ status: 'revision', review_notes: notes, revision_count: (currentCount ?? 0) + 1 })
+    .eq('id', id)
+  await fetch(N8N_CONTENT_REGEN_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemId: id, notes }),
+  }).catch(() => {})
+}
+
+/** Manually replace an item's image with an uploaded file. Returns the new URL. */
+export async function uploadContentImage(id: string, file: File): Promise<string | null> {
+  const path = `items/${id}-manual-${Date.now()}.png`
+  const { error } = await supabase.storage.from('content-media').upload(path, file, { upsert: true, contentType: file.type })
+  if (error) return null
+  const url = supabase.storage.from('content-media').getPublicUrl(path).data.publicUrl
+  await supabase.from('content_items' as any).update({ media_url: url, status: 'ready' }).eq('id', id)
+  return url
 }

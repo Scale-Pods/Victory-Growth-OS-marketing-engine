@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutGrid, Users, TrendingUp, Calendar, Send, BarChart3, Settings as Cog,
-  Search, Sun, Moon, LogOut, Brain, Target, Factory,
+  Search, Sun, Moon, LogOut, Brain, Target, Factory, ClipboardCheck,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 
@@ -15,6 +15,7 @@ const nav = [
     { to: '/trends', label: 'Trend Intelligence', icon: TrendingUp },
     { to: '/strategy', label: 'Marketing Strategy', icon: Target },
     { to: '/content', label: 'Content Factory', icon: Factory },
+    { to: '/review', label: 'Creative Review', icon: ClipboardCheck },
     { to: '/calendar', label: 'Content Calendar', icon: Calendar, count: '12' },
     { to: '/publishing', label: 'Publishing', icon: Send },
   ]},
