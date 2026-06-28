@@ -13,6 +13,7 @@ import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import Intelligence from './pages/Intelligence'
 import IntelligenceReport from './pages/IntelligenceReport'
+import Strategy from './pages/Strategy'
 
 function Protected() {
   const { session, loading } = useAuth()
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/clients/:id" element={<BusinessProfile />} />
           <Route path="/trends" element={<Trends />} />
+          <Route path="/strategy" element={<Strategy />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/publishing" element={<Publishing />} />
           <Route path="/analytics" element={<Analytics />} />
