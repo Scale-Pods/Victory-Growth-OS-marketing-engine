@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Factory, Sparkles, Loader2, CheckCircle2, AlertCircle, Clock, Copy, Check,
-  Calendar as CalIcon, Hash, Megaphone, Lock,
+  Calendar as CalIcon, Hash, Megaphone, Lock, Crop,
 } from 'lucide-react'
 import { LiquidCard, PageHeader } from '../components/ui'
 import { PlatformBadge, CarouselViewer } from '../components/mediaUi'
+import { MediaEditor } from '../components/MediaEditor'
 import { listProfiles, type BusinessProfile } from '../lib/clients'
 import {
   getLatestContentRun, getContentItems, triggerContentTextRun, GENERATION_ENABLED,
@@ -220,7 +221,10 @@ function ContentCard({ item }: { item: ContentItem }) {
   const meta = CONTENT_TYPE_META[item.content_type]
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [mediaUrl, setMediaUrl] = useState(item.media_url)
   const hashtags = item.metadata?.hashtags ?? []
+  const editableImage = meta.kind === 'image' && !!(item.metadata?.slides?.length || mediaUrl)
 
   function copy() {
     const tags = hashtags.length ? '\n\n' + hashtags.map((h) => (h.startsWith('#') ? h : '#' + h)).join(' ') : ''
@@ -244,10 +248,10 @@ function ContentCard({ item }: { item: ContentItem }) {
 
       {item.content_type === 'carousel' && (item.metadata?.slides?.length ?? 0) > 0 ? (
         <CarouselViewer slides={item.metadata!.slides!} />
-      ) : item.media_url ? (
+      ) : mediaUrl ? (
         meta.kind === 'video' ? (
           <video
-            src={item.media_url}
+            src={mediaUrl}
             controls
             playsInline
             preload="metadata"
@@ -260,7 +264,7 @@ function ContentCard({ item }: { item: ContentItem }) {
           />
         ) : (
           <img
-            src={item.media_url}
+            src={mediaUrl}
             alt={item.title ?? 'Generated visual'}
             loading="lazy"
             style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 10, marginBottom: 12, background: 'var(--fill-tertiary)' }}
@@ -300,9 +304,26 @@ function ContentCard({ item }: { item: ContentItem }) {
         </div>
       )}
 
-      <button className="btn-secondary" onClick={copy} style={{ marginTop: 'auto', width: '100%', color: 'var(--label-primary)' }}>
-        {copied ? <><Check size={14} style={{ marginRight: 6, verticalAlign: -2 }} />Copied!</> : <><Copy size={14} style={{ marginRight: 6, verticalAlign: -2 }} />Copy content</>}
-      </button>
+      <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
+        {editableImage && (
+          <button className="btn-secondary" onClick={() => setEditing(true)} style={{ flex: 1, color: 'var(--label-primary)' }}>
+            <Crop size={14} style={{ marginRight: 6, verticalAlign: -2 }} />Customize
+          </button>
+        )}
+        <button className="btn-secondary" onClick={copy} style={{ flex: 1, color: 'var(--label-primary)' }}>
+          {copied ? <><Check size={14} style={{ marginRight: 6, verticalAlign: -2 }} />Copied!</> : <><Copy size={14} style={{ marginRight: 6, verticalAlign: -2 }} />Copy</>}
+        </button>
+      </div>
+
+      {editing && (
+        <MediaEditor
+          src={(item.metadata?.slides?.[0] || mediaUrl)!}
+          itemId={item.id}
+          caption={item.body}
+          onClose={() => setEditing(false)}
+          onSaved={(url) => { setMediaUrl(url); setEditing(false) }}
+        />
+      )}
     </LiquidCard>
   )
 }

@@ -226,3 +226,13 @@ export async function submitForApproval(id: string): Promise<void> {
 export async function rejectContentItem(id: string, notes?: string): Promise<void> {
   await supabase.from('content_items' as any).update({ status: 'ready', review_notes: notes ?? null }).eq('id', id)
 }
+
+/** Save an edited (cropped/filtered) image blob from the editor → new media URL. */
+export async function uploadEditedMedia(id: string, blob: Blob, tag = 'edit'): Promise<string | null> {
+  const path = `items/${id}-${tag}-${Date.now()}.png`
+  const { error } = await supabase.storage.from('content-media').upload(path, blob, { upsert: true, contentType: 'image/png' })
+  if (error) return null
+  const url = supabase.storage.from('content-media').getPublicUrl(path).data.publicUrl + '?v=' + Date.now()
+  await supabase.from('content_items' as any).update({ media_url: url, status: 'in_review' }).eq('id', id)
+  return url
+}

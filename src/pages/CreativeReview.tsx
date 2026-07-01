@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ClipboardCheck, Loader2, CheckCircle2, RefreshCw, Upload, Pencil, Check,
-  ThumbsUp, RotateCcw, ExternalLink, Send, X, Image as ImageIcon, Link2, Palette,
+  ThumbsUp, RotateCcw, ExternalLink, Send, X, Image as ImageIcon, Link2, Palette, Crop,
 } from 'lucide-react'
 import { LiquidCard, PageHeader } from '../components/ui'
 import { PlatformBadge, CarouselViewer } from '../components/mediaUi'
+import { MediaEditor } from '../components/MediaEditor'
 import { listProfiles, type BusinessProfile } from '../lib/clients'
 import {
   getLatestContentRun, getContentItems,
@@ -215,9 +216,11 @@ function ReviewCard({ item, role, onApprove, onReject, onSubmit, onRevise, onSav
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.body ?? '')
   const [replaceOpen, setReplaceOpen] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
   const busy = item.status === 'revision' || item.status === 'generating'
   const approved = item.status === 'approved'
   const isDesigner = role === 'designer'
+  const editableImage = meta.kind === 'image' && !!(item.metadata?.slides?.length || item.media_url)
 
   return (
     <LiquidCard style={{ display: 'flex', flexDirection: 'column', border: approved ? '1.5px solid var(--green)' : undefined }}>
@@ -304,6 +307,11 @@ function ReviewCard({ item, role, onApprove, onReject, onSubmit, onRevise, onSav
               <Pencil size={12} style={{ marginRight: 5, verticalAlign: -2 }} />Edit copy
             </button>
           </div>
+          {editableImage && (
+            <button className="btn-secondary" disabled={busy} onClick={() => setEditorOpen(true)} style={{ fontSize: 12, color: 'var(--label-secondary)' }}>
+              <Crop size={12} style={{ marginRight: 5, verticalAlign: -2 }} />Customize &amp; resize (per platform)
+            </button>
+          )}
 
           {!isDesigner && (
             <button className="btn-secondary" disabled={busy || !GENERATION_ENABLED} onClick={() => setReviseOpen(true)}
@@ -316,6 +324,15 @@ function ReviewCard({ item, role, onApprove, onReject, onSubmit, onRevise, onSav
       )}
 
       {replaceOpen && <ReplaceModal item={item} onClose={() => setReplaceOpen(false)} onReplaced={onReplaced} />}
+      {editorOpen && (
+        <MediaEditor
+          src={(item.metadata?.slides?.[0] || item.media_url)!}
+          itemId={item.id}
+          caption={item.body}
+          onClose={() => setEditorOpen(false)}
+          onSaved={(url) => { onReplaced(item.id, url); setEditorOpen(false) }}
+        />
+      )}
     </LiquidCard>
   )
 }
