@@ -4,6 +4,7 @@ import {
   Calendar as CalIcon, Hash, Megaphone, Lock,
 } from 'lucide-react'
 import { LiquidCard, PageHeader } from '../components/ui'
+import { PlatformBadge, CarouselViewer } from '../components/mediaUi'
 import { listProfiles, type BusinessProfile } from '../lib/clients'
 import {
   getLatestContentRun, getContentItems, triggerContentTextRun, GENERATION_ENABLED,
@@ -233,7 +234,7 @@ function ContentCard({ item }: { item: ContentItem }) {
     <LiquidCard hover style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <span className="badge" style={{ background: meta.color, color: '#fff' }}>{meta.label}</span>
-        {item.platform && <span className="badge badge-grey">{item.platform}</span>}
+        {item.platform && <PlatformBadge platform={item.platform} size="sm" />}
         {item.scheduled_date && (
           <span style={{ fontSize: 11.5, color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: 3, marginLeft: 'auto' }}>
             <CalIcon size={11} /> {new Date(item.scheduled_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -241,7 +242,9 @@ function ContentCard({ item }: { item: ContentItem }) {
         )}
       </div>
 
-      {item.media_url && (
+      {item.content_type === 'carousel' && (item.metadata?.slides?.length ?? 0) > 0 ? (
+        <CarouselViewer slides={item.metadata!.slides!} />
+      ) : item.media_url ? (
         meta.kind === 'video' ? (
           <video
             src={item.media_url}
@@ -263,7 +266,7 @@ function ContentCard({ item }: { item: ContentItem }) {
             style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 10, marginBottom: 12, background: 'var(--fill-tertiary)' }}
           />
         )
-      )}
+      ) : null}
 
       {item.title && <div style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>{item.title}</div>}
 

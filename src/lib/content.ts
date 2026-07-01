@@ -42,6 +42,7 @@ export type ContentItemMeta = {
   seo_notes?: string
   topic?: string
   hook?: string
+  slides?: string[] // carousel slide image URLs (multi-slide)
 }
 
 export type ContentItem = {

@@ -4,6 +4,7 @@ import {
   ThumbsUp, RotateCcw, ExternalLink, Send, X, Image as ImageIcon, Link2, Palette,
 } from 'lucide-react'
 import { LiquidCard, PageHeader } from '../components/ui'
+import { PlatformBadge, CarouselViewer } from '../components/mediaUi'
 import { listProfiles, type BusinessProfile } from '../lib/clients'
 import {
   getLatestContentRun, getContentItems,
@@ -222,13 +223,15 @@ function ReviewCard({ item, role, onApprove, onReject, onSubmit, onRevise, onSav
     <LiquidCard style={{ display: 'flex', flexDirection: 'column', border: approved ? '1.5px solid var(--green)' : undefined }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
         <span className="badge" style={{ background: meta.color, color: '#fff' }}>{meta.label}</span>
-        {item.platform && <span className="badge badge-grey">{item.platform}</span>}
+        {item.platform && <PlatformBadge platform={item.platform} size="sm" />}
         <span className="badge" style={{ marginLeft: 'auto', background: 'transparent', color: pill.color, border: `1px solid ${pill.color}` }}>
           {busy && <Loader2 size={11} style={{ verticalAlign: -1, marginRight: 4, animation: 'spin 1s linear infinite' }} />}{pill.label}
         </span>
       </div>
 
-      {item.media_url ? (
+      {item.content_type === 'carousel' && (item.metadata?.slides?.length ?? 0) > 0 ? (
+        <CarouselViewer slides={item.metadata!.slides!} />
+      ) : item.media_url ? (
         meta.kind === 'video' ? (
           <video src={item.media_url} controls playsInline preload="metadata" poster={item.thumbnail_url ?? undefined}
             style={{ width: '100%', aspectRatio: item.content_type === 'ugc_video' ? '9 / 16' : '16 / 9', objectFit: 'contain', borderRadius: 10, marginBottom: 10, background: '#000', opacity: busy ? .5 : 1 }} />
