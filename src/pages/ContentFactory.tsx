@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Factory, Sparkles, Loader2, CheckCircle2, AlertCircle, Clock, Copy, Check,
-  Calendar as CalIcon, Hash, Megaphone,
+  Calendar as CalIcon, Hash, Megaphone, Lock,
 } from 'lucide-react'
 import { LiquidCard, PageHeader } from '../components/ui'
 import { listProfiles, type BusinessProfile } from '../lib/clients'
 import {
-  getLatestContentRun, getContentItems, triggerContentTextRun,
+  getLatestContentRun, getContentItems, triggerContentTextRun, GENERATION_ENABLED,
   CONTENT_TYPE_META, ALL_CONTENT_TYPES,
   type ContentRun, type ContentItem, type ContentType,
 } from '../lib/content'
@@ -64,6 +64,8 @@ export default function ContentFactory() {
 
   async function generate() {
     if (!activeClient) return
+    // Demo/safe mode: never fire the generation pipeline from the UI.
+    if (!GENERATION_ENABLED) return
     setWorking(true)
     await triggerContentTextRun(activeClient)
     startPolling(activeClient)
@@ -90,13 +92,28 @@ export default function ContentFactory() {
         title="Content Factory"
         subtitle="AI-generated content from your approved strategy · copy, hashtags, CTA & SEO per post"
         action={
-          <button className="btn-primary" onClick={generate} disabled={working}>
+          <button
+            className="btn-primary"
+            onClick={generate}
+            disabled={working || !GENERATION_ENABLED}
+            title={!GENERATION_ENABLED ? 'Demo mode — generation is disabled so no workflow can be triggered' : undefined}
+            style={!GENERATION_ENABLED ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+          >
             {working
               ? <><Loader2 size={15} style={{ verticalAlign: -2, marginRight: 6, animation: 'spin 1s linear infinite' }} />Generating…</>
               : <><Sparkles size={15} style={{ verticalAlign: -2, marginRight: 6 }} />{run ? 'Regenerate Content' : 'Generate Content'}</>}
           </button>
         }
       />
+
+      {!GENERATION_ENABLED && (
+        <LiquidCard style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, borderLeft: '3px solid #f59e0b' }}>
+          <Lock size={15} color="#f59e0b" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: 12.5, color: 'var(--label-secondary)', lineHeight: 1.45 }}>
+            <b style={{ color: 'var(--label-primary)' }}>Showcase mode.</b> Generation triggers are disabled — this is a preview of content the AI factory has already produced. No workflow will run from here.
+          </div>
+        </LiquidCard>
+      )}
 
       {clients.length > 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -125,7 +142,9 @@ export default function ContentFactory() {
           <Factory size={40} style={{ opacity: .18, marginBottom: 14 }} />
           <div style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--label-primary)', marginBottom: 6 }}>No content generated yet</div>
           <div style={{ fontSize: 13.5, color: 'var(--label-tertiary)', marginBottom: 20 }}>Generate ready-to-publish content for every post in this client's approved strategy.</div>
-          <button className="btn-primary" onClick={generate} style={{ margin: '0 auto' }}>
+          <button className="btn-primary" onClick={generate} disabled={!GENERATION_ENABLED}
+            title={!GENERATION_ENABLED ? 'Demo mode — generation is disabled' : undefined}
+            style={{ margin: '0 auto', ...(!GENERATION_ENABLED ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}>
             <Sparkles size={15} style={{ marginRight: 7 }} />Generate Content
           </button>
         </LiquidCard>
@@ -223,12 +242,27 @@ function ContentCard({ item }: { item: ContentItem }) {
       </div>
 
       {item.media_url && (
-        <img
-          src={item.media_url}
-          alt={item.title ?? 'Generated visual'}
-          loading="lazy"
-          style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 10, marginBottom: 12, background: 'var(--fill-tertiary)' }}
-        />
+        meta.kind === 'video' ? (
+          <video
+            src={item.media_url}
+            controls
+            playsInline
+            preload="metadata"
+            poster={item.thumbnail_url ?? undefined}
+            style={{
+              width: '100%',
+              aspectRatio: item.content_type === 'ugc_video' ? '9 / 16' : '16 / 9',
+              objectFit: 'contain', borderRadius: 10, marginBottom: 12, background: '#000',
+            }}
+          />
+        ) : (
+          <img
+            src={item.media_url}
+            alt={item.title ?? 'Generated visual'}
+            loading="lazy"
+            style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 10, marginBottom: 12, background: 'var(--fill-tertiary)' }}
+          />
+        )
       )}
 
       {item.title && <div style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>{item.title}</div>}

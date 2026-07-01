@@ -5,6 +5,17 @@ export const N8N_CONTENT_IMAGE_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/web
 export const N8N_CONTENT_BRAND_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/content-factory-brand'
 export const N8N_CONTENT_REGEN_WEBHOOK = 'https://n8n.srv1010832.hstgr.cloud/webhook/content-regenerate'
 
+/**
+ * SAFE / DEMO MODE — master switch for ALL n8n generation webhooks.
+ *
+ * While `false`, the front end SHOWCASES already-generated content but will NOT
+ * fire any workflow even if a button is clicked — so there is zero risk of an
+ * accidental fal.ai / HeyGen / OpenAI spend. Flip to `true` only when the UI
+ * is meant to trigger live generation. (n8n video/UGC workflows also have no
+ * fal/HeyGen credentials attached, as a second safety layer.)
+ */
+export const GENERATION_ENABLED = false
+
 export type ContentType =
   | 'static_image' | 'carousel' | 'ugc_video' | 'motion_graphics' | 'product_video'
   | 'blog' | 'social_caption' | 'linkedin_article' | 'website_content' | 'email'
@@ -93,8 +104,9 @@ export async function getContentItems(runId: string): Promise<ContentItem[]> {
   return (data as ContentItem[]) ?? []
 }
 
-/** Fire the n8n Content Factory text engine for one client. */
+/** Fire the n8n Content Factory text engine for one client. No-op while GENERATION_ENABLED is false. */
 export async function triggerContentTextRun(profileId: string): Promise<void> {
+  if (!GENERATION_ENABLED) return
   await fetch(N8N_CONTENT_TEXT_WEBHOOK, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -119,6 +131,7 @@ export async function requestRevision(id: string, notes: string, currentCount: n
   await supabase.from('content_items' as any)
     .update({ status: 'revision', review_notes: notes, revision_count: (currentCount ?? 0) + 1 })
     .eq('id', id)
+  if (!GENERATION_ENABLED) return
   await fetch(N8N_CONTENT_REGEN_WEBHOOK, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -134,4 +147,81 @@ export async function uploadContentImage(id: string, file: File): Promise<string
   const url = supabase.storage.from('content-media').getPublicUrl(path).data.publicUrl
   await supabase.from('content_items' as any).update({ media_url: url, status: 'ready' }).eq('id', id)
   return url
+}
+
+// ───────────────────────── Designer Workspace ─────────────────────────
+// These designer asset operations (local upload, Figma/Canva import) pull the
+// designer's OWN content and cost nothing — so they are NOT gated by
+// GENERATION_ENABLED (only AI generation is).
+
+const SUPA_FN = 'https://jjtdbbdzidycgdzjkvvf.supabase.co/functions/v1'
+export const CANVA_CONNECT_URL = `${SUPA_FN}/canva-oauth-start?key=designer-default`
+const CANVA_LIST_URL = `${SUPA_FN}/canva-list-designs?key=designer-default`
+const CANVA_IMPORT_URL = `${SUPA_FN}/canva-import`
+const FIGMA_IMPORT_URL = `${SUPA_FN}/figma-import`
+
+export type Role = 'admin' | 'client' | 'designer'
+export function getRole(): Role {
+  const r = (localStorage.getItem('ve_role') || 'admin').toLowerCase()
+  return r === 'designer' || r === 'client' ? (r as Role) : 'admin'
+}
+export function setRole(r: Role) { localStorage.setItem('ve_role', r) }
+
+export type CanvaDesign = {
+  id: string; title: string | null; thumbnail: string | null
+  edit_url: string | null; view_url: string | null; updated_at: number
+}
+
+/** List the connected designer's Canva designs (or {connected:false} to prompt OAuth). */
+export async function listCanvaDesigns(): Promise<{ connected: boolean; designs: CanvaDesign[] }> {
+  try {
+    const res = await fetch(CANVA_LIST_URL)
+    const data = await res.json()
+    return { connected: !!data.connected, designs: (data.designs as CanvaDesign[]) ?? [] }
+  } catch { return { connected: false, designs: [] } }
+}
+
+/** Export a Canva design and attach it to the item. Returns the new media URL. */
+export async function importCanvaDesign(itemId: string, designId: string, format: 'png' | 'mp4' = 'png'): Promise<string | null> {
+  try {
+    const res = await fetch(CANVA_IMPORT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, designId, format }),
+    })
+    const data = await res.json()
+    return data.ok ? (data.media_url as string) : null
+  } catch { return null }
+}
+
+/** Export a Figma frame (via edge function) and attach it to the item. Returns the new media URL. */
+export async function importFigmaFrame(itemId: string, figmaUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(FIGMA_IMPORT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, figmaUrl }),
+    })
+    const data = await res.json()
+    return data.ok ? (data.media_url as string) : null
+  } catch { return null }
+}
+
+/** Upload any media (image OR video) from the designer's computer. */
+export async function uploadContentMedia(id: string, file: File): Promise<string | null> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || (file.type.startsWith('video') ? 'mp4' : 'png')
+  const path = `items/${id}-upload-${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('content-media').upload(path, file, { upsert: true, contentType: file.type })
+  if (error) return null
+  const url = supabase.storage.from('content-media').getPublicUrl(path).data.publicUrl + '?v=' + Date.now()
+  await supabase.from('content_items' as any).update({ media_url: url, status: 'in_review' }).eq('id', id)
+  return url
+}
+
+/** Designer submits an item for admin/client approval. */
+export async function submitForApproval(id: string): Promise<void> {
+  await supabase.from('content_items' as any).update({ status: 'in_review' }).eq('id', id)
+}
+
+/** Admin/client rejects a submitted item back to the designer. */
+export async function rejectContentItem(id: string, notes?: string): Promise<void> {
+  await supabase.from('content_items' as any).update({ status: 'ready', review_notes: notes ?? null }).eq('id', id)
 }
