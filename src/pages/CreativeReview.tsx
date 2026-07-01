@@ -220,7 +220,7 @@ function ReviewCard({ item, role, onApprove, onReject, onSubmit, onRevise, onSav
   const busy = item.status === 'revision' || item.status === 'generating'
   const approved = item.status === 'approved'
   const isDesigner = role === 'designer'
-  const editableImage = meta.kind === 'image' && !!(item.metadata?.slides?.length || item.media_url)
+  const editableImage = meta.kind !== 'video' && !!(item.metadata?.slides?.length || item.media_url)
 
   return (
     <LiquidCard style={{ display: 'flex', flexDirection: 'column', border: approved ? '1.5px solid var(--green)' : undefined }}>

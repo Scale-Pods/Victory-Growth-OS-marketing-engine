@@ -224,7 +224,7 @@ function ContentCard({ item }: { item: ContentItem }) {
   const [editing, setEditing] = useState(false)
   const [mediaUrl, setMediaUrl] = useState(item.media_url)
   const hashtags = item.metadata?.hashtags ?? []
-  const editableImage = meta.kind === 'image' && !!(item.metadata?.slides?.length || mediaUrl)
+  const editableImage = meta.kind !== 'video' && !!(item.metadata?.slides?.length || mediaUrl)
 
   function copy() {
     const tags = hashtags.length ? '\n\n' + hashtags.map((h) => (h.startsWith('#') ? h : '#' + h)).join(' ') : ''
